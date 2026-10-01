@@ -1,87 +1,3 @@
--- FlowAuth LRM compatibility variables
--- FlowAuth console: silent
-LRM_IsUserPremium=false
-LRM_LinkedDiscordID="\048"
-LRM_ScriptName="\116\101\116\103\117\105"
-LRM_TotalExecutions=0
-LRM_SecondsLeft=math.huge
-LRM_UserNote="\078\111\116\032\115\112\101\099\105\102\105\101\100"
-LRM_ScriptVersion="\048\046\048\046\048\046\056"
-LRM_ExecutionTrace="\102\097\049\095\081\090\088\049\077\068\086\099\107\097\102\050\106\122\111\074\081\075\081\076\073\051\065\097"
--- FlowAuth target internal
--- FlowAuth execution lease
-do
-local type,pcall,rawget,rawset,tonumber,ipairs=type,pcall,rawget,rawset,tonumber,ipairs
-local function environmentOf(provider,fallback)
-if type(provider)=="function" then local ok,value=pcall(function()return provider()end) if ok and type(value)=="table" then return value end end
-return fallback
-end
-local environment=environmentOf(getgenv,nil)
-if not environment then environment=environmentOf(getfenv,_G) end
-local previous=type(environment)=="table" and rawget(environment,"FlowAuth") or nil
-if type(previous)=="table" and type(previous.Stop)=="function" then pcall(previous.Stop,previous) end
-local active=true
-local client={}
-local keyedFeatureOrigin="\104\116\116\112\115\058\047\047\102\108\111\119\097\117\116\104\046\110\101\116"
-local keyedFeatureGatewayOrigin="\104\116\116\112\115\058\047\047\102\108\111\119\097\117\116\104\046\110\101\116"
-local keyedFeatureBusy={}
-local function keyedFeatureHash(value)
-if type(value)~="string" then return nil end
-value=string.lower(value)
-if #value~=32 or not string.match(value,"^[a-f0-9]+$") then return nil end
-return value
-end
-function client:GetKeyLink(loaderHash)
-loaderHash=keyedFeatureHash(loaderHash)
-if not loaderHash then return nil,"invalid_loader_hash" end
-return keyedFeatureGatewayOrigin.."/getkey?project_id="..loaderHash
-end
-function client:RequireKey(loaderHash,key)
-if not active then return false,"client_stopped" end
-loaderHash=keyedFeatureHash(loaderHash)
-if not loaderHash then return false,"invalid_loader_hash" end
-local gateway=keyedFeatureGatewayOrigin.."/getkey?project_id="..loaderHash
-if type(key)~="string" then return false,"key_required",gateway end
-key=string.gsub(key,"^%s*(.-)%s*$","%1")
-if #key<1 or #key>512 or string.find(key,"%c") then return false,"invalid_key",gateway end
-if keyedFeatureBusy[loaderHash] then return false,"feature_loading",gateway end
-keyedFeatureBusy[loaderHash]=true
-local url=keyedFeatureOrigin.."/v1/loaders/"..loaderHash..".lua"
-local source=nil
-for attempt=1,2 do
-if not active then break end
-local ok,value=pcall(game.HttpGet,game,url)
-if not active then break end
-if ok and type(value)=="string" and #value>0 and #value<=262144 and not string.find(string.lower(value),"<html",1,true) then source=value break end
-if attempt==1 and type(task)=="table" and type(task.wait)=="function" then pcall(task.wait,.15) end
-end
-url=nil
-if not active then keyedFeatureBusy[loaderHash]=nil source=nil key=nil return false,"client_stopped",gateway end
-if not source then keyedFeatureBusy[loaderHash]=nil key=nil return false,"loader_download_failed",gateway end
-local compiler=loadstring
-if type(compiler)~="function" then keyedFeatureBusy[loaderHash]=nil source=nil key=nil return false,"loadstring_unavailable",gateway end
-local compiled,feature,compileError=pcall(compiler,source,"=FlowAuthKeyedFeature")
-source=nil
-if not compiled then compileError=feature feature=nil end
-if not active then keyedFeatureBusy[loaderHash]=nil feature=nil key=nil return false,"client_stopped",gateway end
-if type(feature)~="function" then keyedFeatureBusy[loaderHash]=nil key=nil return false,"loader_compile_failed: "..tostring(compileError),gateway end
-local callOk,featureResult=xpcall(function()return feature(key)end,function(value)return tostring(value)end)
-key=nil
-feature=nil
-keyedFeatureBusy[loaderHash]=nil
-if not callOk then return false,featureResult,gateway end
-return true,featureResult,gateway
-end
-function client:Stop()
-active=false
-if type(environment)=="table" and rawget(environment,"FlowAuth")==self then
-pcall(rawset,environment,"FlowAuth",nil)
-end
-end
-if type(environment)=="table" then pcall(rawset,environment,"FlowAuth",client) end
-end
--- FlowAuth payload
---@flowauth:fa1_QZX1MDVckaf2jzoJQKQLI3Aa
 local Game = game.PlaceId
 
 local Players = game:GetService("Players")
@@ -790,7 +706,7 @@ function TerminScriptsLib:CreateHeader()
     StatusText.Size = UDim2.new(1, -12 * Scale, 1, 0)
     StatusText.Position = UDim2.new(0, 12 * Scale, 0, 0)
     StatusText.BackgroundTransparency = 1
-    StatusText.Text = "Online  —  " .. Player.Name
+    StatusText.Text = "Online  â  " .. Player.Name
     StatusText.TextColor3 = Theme.TextMuted
     StatusText.TextSize = 11 * Scale
     StatusText.Font = Enum.Font.GothamMedium
@@ -4387,8 +4303,8 @@ function TerminScriptsLib:CreateConfigTab()
             if Success then
                 local Applied = tonumber(Stats.Applied) or 0
                 local Failed = tonumber(Stats.Failed) or 0
-                local Suffix = Failed > 0 and (" • " .. tostring(Failed) .. " skipped") or ""
-                self:Notify("Loaded", SelectedConfigName .. " • " .. tostring(Applied) .. " values" .. Suffix, "success", 3)
+                local Suffix = Failed > 0 and (" â¢ " .. tostring(Failed) .. " skipped") or ""
+                self:Notify("Loaded", SelectedConfigName .. " â¢ " .. tostring(Applied) .. " values" .. Suffix, "success", 3)
                 RefreshActiveLabel()
                 RefreshDropdown()
             else
@@ -5030,51 +4946,12 @@ end
 
 function TerminScriptsLib.RunKeySystem(OnSuccess)
     ScalingManager:CalculateScale()
-    local Gui = CreateKeySystemGui()
-    local Hwid = GetHwid()
-    StartPlayerPolicyMonitor(Hwid)
-    local Verifying = false
-
-    local function AttemptVerify(KeyValue, IsAutoAttempt)
-        if Verifying or not KeyValue or KeyValue == "" then
-            if not IsAutoAttempt then Gui:SetStatus("Please enter a license key", "error") end
-            return
+    if type(OnSuccess) == "function" then
+        local Result = OnSuccess()
+        if type(Result) == "table" and type(Result.ScheduleAutoLoad) == "function" then
+            Result:ScheduleAutoLoad()
         end
-        Verifying = true
-        Gui:SetLoading(true)
-        Gui:SetStatus(IsAutoAttempt and "Checking saved key..." or "Verifying key...", "info")
-        task.spawn(function()
-            local Ok, Data, ErrMessage = VerifyKey(KeyValue, Hwid)
-            Verifying = false
-            Gui:SetLoading(false)
-            if Ok then
-                SaveKeyToFile(KeyValue)
-                Gui:SetStatus("Key verified. Loading...", "success")
-                task.delay(0.4, function()
-                    Gui:Destroy()
-                    task.delay(0.3, function()
-                        local Loader = CreateLoaderGui()
-                        Loader:Run(OnSuccess)
-                    end)
-                end)
-            else
-                if IsAutoAttempt then
-                    Gui:SetStatus("", "info")
-                else
-                    Gui:SetStatus(ErrMessage or "Verification failed", "error")
-                end
-            end
-        end)
-    end
-
-    Gui:OnSubmit(function(KeyValue)
-        AttemptVerify(KeyValue, false)
-    end)
-
-    local SavedKey = LoadKeyFromFile()
-    if SavedKey then
-        AttemptVerify(SavedKey, true)
     end
 end
 
-return TerminScriptsLib
+loaders = TerminScriptsLib
